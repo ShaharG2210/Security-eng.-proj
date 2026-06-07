@@ -1,6 +1,6 @@
 """
-blog_server.py — שרת בלוג פגיע ל־XSS
-הדגמה חינוכית בלבד, לריצה מקומית בלבד.
+blog_server.py — Vulnerable blog server for XSS demonstration
+Educational purposes only, run locally only.
 """
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -12,35 +12,35 @@ COMMENTS_FILE = "comments.txt"
 
 
 def load_comments():
-    """טוען את כל התגובות מהקובץ ומחזיר רשימה."""
+    """Loads all comments from file and returns a list."""
     if not os.path.exists(COMMENTS_FILE):
         open(COMMENTS_FILE, "w").close()
         return []
     with open(COMMENTS_FILE, "r", encoding="utf-8") as f:
         lines = f.read().splitlines()
-    # מסנן שורות ריקות
+    # Filter empty lines
     return [line for line in lines if line.strip()]
 
 
 def save_comment(comment):
-    """שומר תגובה חדשה לקובץ."""
+    """Saves a new comment to file."""
     with open(COMMENTS_FILE, "a", encoding="utf-8") as f:
         f.write(comment + "\n")
 
 
 def build_page(comments):
-    """בונה את דף ה־HTML של הבלוג.
+    """Builds the HTML page of the blog.
 
-    שימו לב: התגובות מוצגות כ־raw HTML ללא escaping — זו החולשה המכוונת.
+    Note: Comments are displayed as raw HTML without escaping — this is the intentional vulnerability.
     """
-    # בונה את רשימת התגובות כ־HTML גולמי
+    # Build the comments list as raw HTML
     comments_html = ""
     for c in comments:
-        # ⚠️  אין html.escape — התגובה מוצגת כמו שהיא, כולל תגיות HTML/JS
+        # ⚠️  No html.escape — the comment is displayed as-is, including HTML/JS tags
         comments_html += f"<li>{c}</li>\n"
 
     return f"""<!DOCTYPE html>
-<html lang="he">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Vulnerable Blog</title>
@@ -55,21 +55,21 @@ def build_page(comments):
 </head>
 <body>
   <h1>Vulnerable Blog</h1>
-  <div class="warn">⚠️ אתר זה פגיע ל־XSS בכוונה, לצורכי הדגמה חינוכית בלבד.</div>
+  <div class="warn">⚠️ This site is intentionally vulnerable to XSS for educational purposes only.</div>
 
-  <h2>הוסף תגובה</h2>
+  <h2>Add a Comment</h2>
   <form method="POST" action="/">
-    <textarea name="comment" placeholder="כתוב תגובה כאן..."></textarea><br>
-    <button type="submit">שלח תגובה</button>
+    <textarea name="comment" placeholder="Write a comment here..."></textarea><br>
+    <button type="submit">Submit Comment</button>
   </form>
 
-  <h2>תגובות</h2>
+  <h2>Comments</h2>
   <ul>
-    {comments_html if comments_html else "<li>אין תגובות עדיין.</li>"}
+    {comments_html if comments_html else "<li>No comments yet.</li>"}
   </ul>
 
   <hr>
-  <small>פרויקט הדגמה — Cybersecurity Course | localhost only</small>
+  <small>Demonstration project — Cybersecurity Course | localhost only</small>
 </body>
 </html>"""
 
@@ -79,7 +79,7 @@ class BlogHandler(BaseHTTPRequestHandler):
     def _set_common_headers(self, status=200, content_type="text/html; charset=utf-8"):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
-        # ⚠️  ללא HttpOnly — כדי ש־document.cookie יוכל לקרוא את ה־cookie (חלק מההדגמה)
+        # ⚠️  No HttpOnly — so that document.cookie can read the cookie (part of the demo)
         self.send_header("Set-Cookie", "session_id=abc123; Path=/")
         self.end_headers()
 
@@ -96,20 +96,20 @@ class BlogHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.path == "/":
-            # קריאת גוף הבקשה
+            # Read the request body
             content_length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_length).decode("utf-8")
 
-            # פענוח הפרמטר מהטופס
+            # Decode the form parameter
             params = parse_qs(body)
             comment = params.get("comment", [""])[0]
             comment = unquote_plus(comment)
 
             if comment.strip():
-                # ⚠️  שמירה ללא sanitize — זו החולשה
+                # ⚠️  Saving without sanitization — this is the vulnerability
                 save_comment(comment)
 
-            # PRG — Post/Redirect/Get: מונע שליחה כפולה עם רענון
+            # PRG — Post/Redirect/Get: prevents duplicate submission on refresh
             self.send_response(303)
             self.send_header("Location", "/")
             self.send_header("Set-Cookie", "session_id=abc123; Path=/")
@@ -119,12 +119,12 @@ class BlogHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def log_message(self, format, *args):
-        # הדפסה נקייה לטרמינל
+        # Clean output to terminal
         print(f"[Blog] {self.address_string()} — {format % args}")
 
 
 if __name__ == "__main__":
-    # יצירת קובץ תגובות אם לא קיים
+    # Create comments file if it doesn't exist
     if not os.path.exists(COMMENTS_FILE):
         open(COMMENTS_FILE, "w").close()
 
