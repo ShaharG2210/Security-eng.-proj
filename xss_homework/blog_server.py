@@ -4,7 +4,7 @@ Educational purposes only, run locally only.
 """
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import parse_qs, unquote_plus
+from urllib.parse import parse_qs, unquote_plus, urlparse
 import os
 
 PORT = 8000
@@ -28,7 +28,7 @@ def save_comment(comment):
         f.write(comment + "\n")
 
 
-def build_page(comments):
+def build_page(comments, show_success=False):
     """Builds the HTML page of the blog.
 
     Note: Comments are displayed as raw HTML without escaping — this is the intentional vulnerability.
@@ -51,11 +51,13 @@ def build_page(comments):
     button {{ margin-top: 8px; padding: 6px 18px; cursor: pointer; }}
     ul   {{ background: #f9f9f9; padding: 16px 32px; border-radius: 6px; }}
     .warn {{ background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 4px; margin-bottom: 16px; font-size: 0.9em; }}
+    .success {{ background: #d4edda; border: 1px solid #28a745; color: #155724; padding: 10px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 0.95em; }}
   </style>
 </head>
 <body>
   <h1>Vulnerable Blog</h1>
-  <div class="warn">⚠️ This site is intentionally vulnerable to XSS for educational purposes only.</div>
+
+  {"<div class='success'>✅ Your comment was added successfully!</div><script>history.replaceState(null,'','/');</script>" if show_success else ""}
 
   <h2>Add a Comment</h2>
   <form method="POST" action="/">
@@ -68,8 +70,6 @@ def build_page(comments):
     {comments_html if comments_html else "<li>No comments yet.</li>"}
   </ul>
 
-  <hr>
-  <small>Demonstration project — Cybersecurity Course | localhost only</small>
 </body>
 </html>"""
 
@@ -84,9 +84,11 @@ class BlogHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        if self.path == "/":
+        parsed = urlparse(self.path)
+        if parsed.path == "/":
+            show_success = "success=1" in (parsed.query or "")
             comments = load_comments()
-            page = build_page(comments)
+            page = build_page(comments, show_success=show_success)
             self._set_common_headers()
             self.wfile.write(page.encode("utf-8"))
         else:
@@ -110,8 +112,9 @@ class BlogHandler(BaseHTTPRequestHandler):
                 save_comment(comment)
 
             # PRG — Post/Redirect/Get: prevents duplicate submission on refresh
+            # ?success=1 מציג הודעת אישור בדף
             self.send_response(303)
-            self.send_header("Location", "/")
+            self.send_header("Location", "/?success=1")
             self.send_header("Set-Cookie", "session_id=abc123; Path=/")
             self.end_headers()
         else:
@@ -130,7 +133,7 @@ if __name__ == "__main__":
 
     server = HTTPServer(("localhost", PORT), BlogHandler)
     print("=" * 50)
-    print("  📝  Blog Server (VULNERABLE — educational only)")
+    print("  📝  Blog Server (VULNERABLE)")    
     print(f"  Running at: http://localhost:{PORT}")
     print("  Press Ctrl+C to stop.")
     print("=" * 50)

